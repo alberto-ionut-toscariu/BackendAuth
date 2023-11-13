@@ -71,7 +71,7 @@ namespace BackendAuth.Controllers
 
         [HttpPost]
         [Route("Login")]
-        public async Task<IActionResult> Login([FromBody] UserLogInRequestDto loginRequest)
+        public async Task<IActionResult> Login([FromBody] UserAuthenticationRequestDto loginRequest)
         {
             if (!ModelState.IsValid)
             {

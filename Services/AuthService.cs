@@ -84,11 +84,11 @@ namespace BackendAuth.Services
                 var jwtToken = jwtTokenHandler.WriteToken(token);
                 await _context.SaveChangesAsync();
 
-                return AuthResultHelper.CreateSuccessResponse(jwtToken);
+                return AuthResultHelper.CreateSuccessResponse(jwtToken, "Token generated successfully!");
             }
         }
 
-        public async Task<AuthResult> LoginAsync(UserLogInRequestDto loginRequest)
+        public async Task<AuthResult> LoginAsync(UserAuthenticationRequestDto loginRequest)
         {
             {
                 // Find user by email

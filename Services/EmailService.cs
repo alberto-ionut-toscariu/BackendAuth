@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Abstractions;
-using Microsoft.AspNetCore.Mvc.Routing;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
