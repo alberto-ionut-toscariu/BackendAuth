@@ -11,20 +11,24 @@ namespace BackendAuth.Controllers
     public class AuthenticationController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IResetPasswordService _resetPasswordService;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly UserContext _context;
         private readonly ILogger<AuthenticationController> _logger;
 
-        public AuthenticationController(
+        public AuthenticationController
+        (
             IAuthService authService,
+            IResetPasswordService resetPasswordService,
             UserManager<IdentityUser> userManager,
-             IConfiguration configuration,
-              UserContext userContext,
-              ILogger<AuthenticationController> logger
-              )
+            IConfiguration configuration,
+            UserContext userContext,
+            ILogger<AuthenticationController> logger
+        )
         {
             _authService = authService;
+            _resetPasswordService = resetPasswordService;
             _userManager = userManager;
             _configuration = configuration;
             _context = userContext;
@@ -44,7 +48,7 @@ namespace BackendAuth.Controllers
                     Messages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
                 });
             }
-            var result = await _authService.RegisterUserAsync(requestDto, this.HttpContext);
+            var result = await _authService.RegisterUserAsync(requestDto, HttpContext);
             return result.Status switch
             {
                 200 => Ok(result),
@@ -68,6 +72,30 @@ namespace BackendAuth.Controllers
             };
         }
 
+        [HttpPost]
+        [Route("RequestResetPassword")]
+        public async Task<IActionResult> RequestResetPassword([FromBody] UserResetPasswordRequestDto resetRequest)
+        {
+            var result = await _resetPasswordService.RequestResetPasswordAsync(resetRequest.Email);
+            return result.Status switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                _ => StatusCode(500, result),
+            };
+        }
+
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] UserResetPasswordRequestDto resetRequest)
+        {
+            var result = await _resetPasswordService.ResetPasswordAsync(resetRequest);
+            return result.Status switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                _ => StatusCode(500, result),
+            };
+        }
 
         [HttpPost]
         [Route("Login")]

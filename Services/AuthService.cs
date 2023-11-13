@@ -138,8 +138,9 @@ namespace BackendAuth.Services
                 var confirmationUrl = _emailService.GenerateConfirmationUrl(newUser.Id, emailConfirmationToken, httpContext);
 
                 var body = $"Please confirm your email address by clicking the following link: <a href=\"{confirmationUrl}\">Click Here</a>";
+                var subject = "Email Verification Waves";
 
-                var result = await _emailService.SendVerificationEmailAsync(body, newUser.Email);
+                var result = await _emailService.SendVerificationEmailAsync(body, newUser.Email, subject);
                 return result
                  ? AuthResultHelper.CreateSuccessResponse("Email Sent successfully!")
                  : AuthResultHelper.CreateSuccessResponse("Email Created, but not sent Successfully!");

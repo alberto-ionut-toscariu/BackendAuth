@@ -26,7 +26,7 @@ builder.Services.AddLogging(builder =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-
+builder.Services.AddScoped<IResetPasswordService, ResetPasswordService>();
 
 var secretTokenKey = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("JwtConfig:Secret").Value);
 

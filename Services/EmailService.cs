@@ -15,7 +15,7 @@ namespace BackendAuth.Services
             _logger = logger;
             _linkGenerator = linkGenerator;
         }
-        public async Task<bool> SendVerificationEmailAsync(string body, string email)
+        public async Task<bool> SendVerificationEmailAsync(string body, string email, string subject)
         {
             try
             {
@@ -26,7 +26,6 @@ namespace BackendAuth.Services
                 var client = new SendGridClient(apiKey);
 
                 var from = new EmailAddress(senderEmail, "Waves");
-                var subject = "Email Verification Waves";
                 var to = new EmailAddress(email);
                 var msg = MailHelper.CreateSingleEmail(from, to, subject, "", body);
 
