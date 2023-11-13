@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  sql-server-db:
+    container_name: sql-server-db
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: 'Y'
+      SA_PASSWORD: 'Etapa3din4'
+    ports:
+      - '1433:1433'
+    expose:
+      - '1433'
