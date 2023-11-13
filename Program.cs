@@ -1,5 +1,6 @@
 using BackendAuth.Configurations;
 using BackendAuth.Data;
+using BackendAuth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,10 @@ builder.Services.AddLogging(builder =>
     builder.AddConsole();
     builder.AddDebug();
 });
+
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 
 var secretTokenKey = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("JwtConfig:Secret").Value);
 
