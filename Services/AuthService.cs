@@ -6,6 +6,9 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using BackendAuth.Helpers;
+using BackendAuth.Models.DTOs;
+using Microsoft.EntityFrameworkCore;
+using BackendAuth.Configurations;
 namespace BackendAuth.Services
 {
     public class AuthService : IAuthService
@@ -15,6 +18,9 @@ namespace BackendAuth.Services
         private readonly IEmailService _emailService;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly UserContext _context;
+        private readonly JwtConfigOptions _jwtConfig;
+
+
 
         public AuthService
         (
@@ -22,14 +28,16 @@ namespace BackendAuth.Services
             ILogger<AuthService> logger,
             IEmailService emailService,
             UserManager<IdentityUser> userManager,
-            UserContext userContext
-            )
+            UserContext userContext,
+            JwtConfigOptions jwtConfig
+        )
         {
             _configuration = configuration;
             _logger = logger;
             _emailService = emailService;
             _userManager = userManager;
             _context = userContext;
+            _jwtConfig = jwtConfig;
         }
 
         public async Task<AuthResult> ConfirmEmailAsync(string userId, string code)
@@ -58,34 +66,43 @@ namespace BackendAuth.Services
 
         public async Task<AuthResult> GenerateJwtTokenAsync(IdentityUser user)
         {
-            {
-                var jwtTokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.UTF8.GetBytes(_configuration.GetSection("JwtConfig:Secret").Value);
-                var expiryTimeString = _configuration.GetSection("JwtConfig:ExpiryTimeFrame").Value;
-                var defaultExpiryTime = TimeSpan.FromMinutes(15);
-                var expiryTime = !string.IsNullOrEmpty(expiryTimeString) ? TimeSpan.Parse(expiryTimeString) : defaultExpiryTime;
+            var jwtTokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_jwtConfig.Secret);
+            var expiryTimeString = _jwtConfig.ExpiryTime;
+            var defaultExpiryTime = TimeSpan.FromMinutes(15);
+            var expiryTime = !string.IsNullOrEmpty(expiryTimeString) ? TimeSpan.Parse(expiryTimeString) : defaultExpiryTime;
 
-                //Token descriptor
-                var tokenDescriptor = new SecurityTokenDescriptor()
+            //Token descriptor
+            var tokenDescriptor = new SecurityTokenDescriptor()
+            {
+                Expires = DateTime.UtcNow.Add(expiryTime),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256),
+                Subject = new ClaimsIdentity(new[]
                 {
-                    Expires = DateTime.UtcNow.Add(expiryTime),
-                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256),
-                    Subject = new ClaimsIdentity(new[]
-                    {
                     new Claim("Id",user.Id),
                     new Claim(JwtRegisteredClaimNames.Sub,user.Email),
                     new Claim(JwtRegisteredClaimNames.Email,user.Email),
                     new Claim(JwtRegisteredClaimNames.Jti,Guid.NewGuid().ToString()),
                     new Claim(JwtRegisteredClaimNames.Iat,DateTime.Now.ToUniversalTime().ToString()),
                 })
-                };
+            };
 
-                var token = jwtTokenHandler.CreateToken(tokenDescriptor);
-                var jwtToken = jwtTokenHandler.WriteToken(token);
-                await _context.SaveChangesAsync();
+            var token = jwtTokenHandler.CreateToken(tokenDescriptor);
+            var jwtToken = jwtTokenHandler.WriteToken(token);
 
-                return AuthResultHelper.CreateSuccessResponse(jwtToken, "Token generated successfully!");
-            }
+            var refreshToken = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = GeneralHelper.RandomStringGeneration(22), // Add a refresh token
+                JwtId = token.Id,
+                IsUsed = false,
+                IsRevoked = false,
+                AddedDate = DateTime.UtcNow,
+                ExpiryDate = DateTime.UtcNow.AddMonths(6)
+            };
+            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+            return AuthResultHelper.CreateSuccessResponseWithToken(jwtToken, refreshToken.Token, "Token generated successfully!");
         }
 
         public async Task<AuthResult> LoginAsync(UserAuthenticationRequestDto loginRequest)
@@ -146,6 +163,58 @@ namespace BackendAuth.Services
                  : AuthResultHelper.CreateSuccessResponse("Email Created, but not sent Successfully!");
             }
             return AuthResultHelper.CreateErrorResponse("Failed to create account", 400);
+        }
+
+        public async Task<AuthResult> RefreshToken(TokenRequest tokenRequest)
+        {
+            var result = await VerifyAndGenerateRefreshToken(tokenRequest);
+            if (result == null)
+            {
+                return AuthResultHelper.CreateErrorResponse("Invalid Token", 400);
+            }
+            return result;
+        }
+
+        private async Task<AuthResult> VerifyAndGenerateRefreshToken(TokenRequest tokenRequest)
+        {
+            var jwtTokenHandler = new JwtSecurityTokenHandler();
+            try
+            {
+                //_tokenValidationParameters.ValidateLifetime = false; //question this!
+                var tokenInVerification = jwtTokenHandler.ValidateToken(tokenRequest.Token, _jwtConfig.TokenValidationParameters, out var validatedToken);
+
+                if (validatedToken is JwtSecurityToken jwtSecurityToken)
+                {
+                    var result = jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase);
+                    if (!result) return AuthResultHelper.CreateErrorResponse("Incorrect header", 400);
+                }
+                var utcExpiryDate = long.Parse(tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp).Value);
+                var expiryDate = GeneralHelper.UnixTimestampToDateTime(utcExpiryDate);
+
+                if (expiryDate >= DateTime.Now)
+                {
+                    return AuthResultHelper.CreateErrorResponse("Token expired", 400);
+                }
+
+                var storedToken = await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Token == tokenRequest.RefreshToken);
+                var jti = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti).Value;
+                if (storedToken == null || storedToken.IsUsed || storedToken.IsRevoked || storedToken.ExpiryDate < DateTime.UtcNow || storedToken.JwtId != jti)
+                    return AuthResultHelper.CreateErrorResponse("Invalid Token!", 400);
+
+                storedToken.IsUsed = true;
+                _context.RefreshTokens.Update(storedToken);
+                await _context.SaveChangesAsync();
+
+                var dbUser = await _userManager.FindByIdAsync(storedToken.UserId);
+                return await GenerateJwtTokenAsync(dbUser);
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return AuthResultHelper.CreateErrorResponse("Server Error", 500);
+
+            }
         }
     }
 }

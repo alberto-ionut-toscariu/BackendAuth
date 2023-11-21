@@ -14,13 +14,14 @@ namespace BackendAuth.Helpers
 
             };
         }
-        public static AuthResult CreateSuccessResponse(string token, string message)
+        public static AuthResult CreateSuccessResponseWithToken(string token, string refreshToken, string message)
         {
             return new AuthResult
             {
                 Success = true,
                 Status = 200,
                 Token = token,
+                RefreshToken = refreshToken,
                 Messages = new List<string> { message }
 
             };

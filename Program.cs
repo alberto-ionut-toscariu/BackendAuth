@@ -1,14 +1,14 @@
 using BackendAuth.Configurations;
 using BackendAuth.Data;
+using BackendAuth.Helpers;
 using BackendAuth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 string connectionString = builder.Configuration.GetConnectionString("Default") ?? "null";
+var generalHelper = new GeneralHelper();
 
 // Add services to the container.
 
@@ -17,28 +17,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<UserContext>(opt => opt.UseSqlServer(connectionString));
-builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfig"));
 builder.Services.AddLogging(builder =>
 {
     builder.AddConsole();
     builder.AddDebug();
 });
 
+builder.Services.Configure<JwtConfigOptions>(builder.Configuration.GetSection("JwtConfig"));
+var jwtConfig = builder.Configuration.GetSection("JwtConfig").Get<JwtConfigOptions>();
+jwtConfig.TokenValidationParameters = generalHelper.GetTokenValidationParameters(jwtConfig);
+
+builder.Services.AddSingleton(jwtConfig);
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IResetPasswordService, ResetPasswordService>();
 
-var secretTokenKey = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("JwtConfig:Secret").Value);
-
-var tokenValidationParameter = new TokenValidationParameters()
-{
-    ValidateIssuerSigningKey = true,
-    IssuerSigningKey = new SymmetricSecurityKey(secretTokenKey),
-    ValidateIssuer = false, //MUST BE IMPROVED - HTTPS locally can be invalidated. Deplo must be true
-    ValidateAudience = false, //MUST BE IMROVED
-    RequireExpirationTime = false, // We should use a refresh token later
-    ValidateLifetime = true
-};
 builder.Services.AddAuthentication(opt =>
 {
     opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -49,8 +42,9 @@ builder.Services.AddAuthentication(opt =>
 .AddJwtBearer(jwt =>
 {
     jwt.SaveToken = true;
-    jwt.TokenValidationParameters = tokenValidationParameter;
+    jwt.TokenValidationParameters = jwtConfig.TokenValidationParameters;
 });
+
 
 builder.Services.AddDefaultIdentity<IdentityUser>(opt =>
 {

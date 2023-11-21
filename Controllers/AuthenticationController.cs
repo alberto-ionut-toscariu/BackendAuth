@@ -1,5 +1,5 @@
-using BackendAuth.Data;
 using BackendAuth.Models;
+using BackendAuth.Models.DTOs;
 using BackendAuth.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +14,6 @@ namespace BackendAuth.Controllers
         private readonly IResetPasswordService _resetPasswordService;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
-        private readonly UserContext _context;
         private readonly ILogger<AuthenticationController> _logger;
 
         public AuthenticationController
@@ -23,7 +22,6 @@ namespace BackendAuth.Controllers
             IResetPasswordService resetPasswordService,
             UserManager<IdentityUser> userManager,
             IConfiguration configuration,
-            UserContext userContext,
             ILogger<AuthenticationController> logger
         )
         {
@@ -31,7 +29,6 @@ namespace BackendAuth.Controllers
             _resetPasswordService = resetPasswordService;
             _userManager = userManager;
             _configuration = configuration;
-            _context = userContext;
             _logger = logger;
         }
 
@@ -115,6 +112,26 @@ namespace BackendAuth.Controllers
                 200 => Ok(result),
                 400 => BadRequest(result),
                 409 => Conflict(result),
+                _ => StatusCode(500, result),
+            };
+        }
+        [HttpPost]
+        [Route("RefreshToken")]
+        public async Task<IActionResult> RefreshToken([FromBody] TokenRequest tokenRequest)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new AuthResult
+                {
+                    Success = false,
+                    Messages = new List<string> { "Invalid Payload" }
+                });
+            }
+            var result = await _authService.RefreshToken(tokenRequest);
+            return result.Status switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
                 _ => StatusCode(500, result),
             };
         }

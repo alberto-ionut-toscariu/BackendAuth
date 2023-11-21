@@ -19,7 +19,6 @@ namespace BackendAuth.Services
         {
             try
             {
-
                 var apiKey = _configuration.GetSection("EmailConfig:API_KEY").Value;
                 var senderEmail = _configuration.GetSection("EmailConfig:SENDER").Value;
 
@@ -35,7 +34,7 @@ namespace BackendAuth.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error sending email: {ex.Message}");
+                _logger.LogError(ex, "Error sending email: {ExceptionMessage}", ex.Message);
                 return false;
             }
         }
