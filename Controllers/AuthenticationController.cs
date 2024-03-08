@@ -12,8 +12,6 @@ namespace BackendAuth.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IResetPasswordService _resetPasswordService;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly IConfiguration _configuration;
         private readonly ILogger<AuthenticationController> _logger;
 
         public AuthenticationController
@@ -21,14 +19,11 @@ namespace BackendAuth.Controllers
             IAuthService authService,
             IResetPasswordService resetPasswordService,
             UserManager<IdentityUser> userManager,
-            IConfiguration configuration,
             ILogger<AuthenticationController> logger
         )
         {
             _authService = authService;
             _resetPasswordService = resetPasswordService;
-            _userManager = userManager;
-            _configuration = configuration;
             _logger = logger;
         }
 

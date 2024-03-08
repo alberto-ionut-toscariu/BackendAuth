@@ -24,10 +24,15 @@ builder.Services.AddLogging(builder =>
 });
 
 builder.Services.Configure<JwtConfigOptions>(builder.Configuration.GetSection("JwtConfig"));
-var jwtConfig = builder.Configuration.GetSection("JwtConfig").Get<JwtConfigOptions>();
+builder.Services.Configure<EmailConfigOptions>(builder.Configuration.GetSection("EmailConfig"));
+builder.Services.AddSingleton<EmailConfigOptions>(provider =>
+    provider.GetRequiredService<IConfiguration>().GetSection("EmailConfig").Get<EmailConfigOptions>());
+var jwtConfig = builder.Configuration.GetSection("JwtConfig").Get<JwtConfigOptions>(); // Used for manually injecting - might be better to find alternative
 jwtConfig.TokenValidationParameters = generalHelper.GetTokenValidationParameters(jwtConfig);
 
 builder.Services.AddSingleton(jwtConfig);
+
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IResetPasswordService, ResetPasswordService>();

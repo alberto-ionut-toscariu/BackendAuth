@@ -27,7 +27,7 @@ namespace BackendAuth.Helpers
             };
         }
 
-        public static AuthResult CreateErrorResponse(string errorMessage, int statusCode)
+        public static AuthResult CreateErrorResponse(string errorMessage, int statusCode = 500)
         {
             return new AuthResult
             {

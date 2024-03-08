@@ -1,3 +1,5 @@
+using BackendAuth.Configurations;
+using Org.BouncyCastle.Asn1;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
@@ -5,22 +7,23 @@ namespace BackendAuth.Services
 {
     public class EmailService : IEmailService
     {
-
-        private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
         private readonly LinkGenerator _linkGenerator;
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, LinkGenerator linkGenerator)
+        private readonly EmailConfigOptions _emailConfigOptions;
+        public EmailService(ILogger<EmailService> logger, LinkGenerator linkGenerator, EmailConfigOptions emailConfigOptions)
         {
-            _configuration = configuration;
             _logger = logger;
             _linkGenerator = linkGenerator;
+            _emailConfigOptions = emailConfigOptions;
         }
         public async Task<bool> SendVerificationEmailAsync(string body, string email, string subject)
         {
             try
             {
-                var apiKey = _configuration.GetSection("EmailConfig:API_KEY").Value;
-                var senderEmail = _configuration.GetSection("EmailConfig:SENDER").Value;
+                Console.WriteLine(_emailConfigOptions.ApiKey);
+                Console.WriteLine(_emailConfigOptions.SenderEmail);
+                var apiKey = _emailConfigOptions.ApiKey;
+                var senderEmail = _emailConfigOptions.SenderEmail;
 
                 var client = new SendGridClient(apiKey);
 
@@ -46,8 +49,7 @@ namespace BackendAuth.Services
                 action: "ConfirmEmail",
                 controller: "Authentication",
                 values: new { userId = userId, code = emailConfirmationToken },
-                scheme: "http");
-
+                scheme: httpContext.Request.Scheme);
             return confirmationUrl;
         }
     }

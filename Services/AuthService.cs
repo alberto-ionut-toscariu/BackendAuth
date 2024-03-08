@@ -13,18 +13,13 @@ namespace BackendAuth.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
         private readonly IEmailService _emailService;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly UserContext _context;
         private readonly JwtConfigOptions _jwtConfig;
-
-
-
         public AuthService
         (
-            IConfiguration configuration,
             ILogger<AuthService> logger,
             IEmailService emailService,
             UserManager<IdentityUser> userManager,
@@ -32,7 +27,6 @@ namespace BackendAuth.Services
             JwtConfigOptions jwtConfig
         )
         {
-            _configuration = configuration;
             _logger = logger;
             _emailService = emailService;
             _userManager = userManager;
@@ -213,7 +207,6 @@ namespace BackendAuth.Services
             {
                 Console.WriteLine(e);
                 return AuthResultHelper.CreateErrorResponse("Server Error", 500);
-
             }
         }
     }

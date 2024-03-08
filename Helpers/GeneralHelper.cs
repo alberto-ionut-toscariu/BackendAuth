@@ -22,6 +22,10 @@ namespace BackendAuth.Helpers
 
         public TokenValidationParameters GetTokenValidationParameters(JwtConfigOptions jwtConfig)
         {
+            if (string.IsNullOrWhiteSpace(jwtConfig.Secret))
+            {
+                throw new ArgumentException("JWT secret is not provided or is empty.", nameof(jwtConfig.Secret));
+            }
             return new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
