@@ -1,8 +1,10 @@
 using BackendAuth.Models;
 using BackendAuth.Models.DTOs;
 using BackendAuth.Services;
+using BackendAuth.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace BackendAuth.Controllers
 {
@@ -14,121 +16,74 @@ namespace BackendAuth.Controllers
         private readonly IResetPasswordService _resetPasswordService;
         private readonly ILogger<AuthenticationController> _logger;
 
-        public AuthenticationController
-        (
+        public AuthenticationController(
             IAuthService authService,
             IResetPasswordService resetPasswordService,
             UserManager<IdentityUser> userManager,
-            ILogger<AuthenticationController> logger
-        )
+            ILogger<AuthenticationController> logger)
         {
             _authService = authService;
             _resetPasswordService = resetPasswordService;
             _logger = logger;
         }
 
-        [HttpPost]
-        [Route("Register")]
+        [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] UserRegistrationRequestDto requestDto)
         {
             if (!ModelState.IsValid)
             {
-                // Handle validation errors
-                return BadRequest(new AuthResult()
-                {
-                    Success = false,
-                    Messages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
-                });
+                return BadRequest(AuthResultHelper.CreateErrorResponse(
+                    string.Join(", ", ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))),
+                    HttpStatusCode.BadRequest));
             }
+
             var result = await _authService.RegisterUserAsync(requestDto, HttpContext);
-            return result.Status switch
-            {
-                200 => Ok(result),
-                400 => BadRequest(result),
-                409 => Conflict(result),
-                _ => StatusCode(500, result),
-            };
+            return StatusCode((int)result.Status, result);
         }
 
-        [HttpGet]
-        [Route("ConfirmEmail")]
+        [HttpGet("ConfirmEmail")]
         public async Task<IActionResult> ConfirmEmail(string userId, string code)
         {
             var result = await _authService.ConfirmEmailAsync(userId, code);
-
-            return result.Status switch
-            {
-                200 => Ok(result),
-                400 => BadRequest(result),
-                _ => StatusCode(500, result),
-            };
+            return StatusCode((int)result.Status, result);
         }
 
-        [HttpPost]
-        [Route("RequestResetPassword")]
-        public async Task<IActionResult> RequestResetPassword([FromBody] UserResetPasswordRequestDto resetRequest)
+        [HttpPost("RequestResetPassword")]
+        public async Task<IActionResult> RequestResetPassword([FromBody] UserRequireResetPasswordRequestDto resetRequest)
         {
             var result = await _resetPasswordService.RequestResetPasswordAsync(resetRequest.Email);
-            return result.Status switch
-            {
-                200 => Ok(result),
-                400 => BadRequest(result),
-                _ => StatusCode(500, result),
-            };
+            return StatusCode((int)result.Status, result);
         }
 
         [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword([FromBody] UserResetPasswordRequestDto resetRequest)
         {
             var result = await _resetPasswordService.ResetPasswordAsync(resetRequest);
-            return result.Status switch
-            {
-                200 => Ok(result),
-                400 => BadRequest(result),
-                _ => StatusCode(500, result),
-            };
+            return StatusCode((int)result.Status, result);
         }
 
-        [HttpPost]
-        [Route("Login")]
+        [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] UserAuthenticationRequestDto loginRequest)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new AuthResult
-                {
-                    Success = false,
-                    Messages = new List<string> { "Invalid Payload" }
-                });
+                return BadRequest(AuthResultHelper.CreateErrorResponse("Invalid Payload", HttpStatusCode.BadRequest));
             }
+
             var result = await _authService.LoginAsync(loginRequest);
-            return result.Status switch
-            {
-                200 => Ok(result),
-                400 => BadRequest(result),
-                409 => Conflict(result),
-                _ => StatusCode(500, result),
-            };
+            return StatusCode((int)result.Status, result);
         }
-        [HttpPost]
-        [Route("RefreshToken")]
+
+        [HttpPost("RefreshToken")]
         public async Task<IActionResult> RefreshToken([FromBody] TokenRequest tokenRequest)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new AuthResult
-                {
-                    Success = false,
-                    Messages = new List<string> { "Invalid Payload" }
-                });
+                return BadRequest(AuthResultHelper.CreateErrorResponse("Invalid Payload", HttpStatusCode.BadRequest));
             }
+
             var result = await _authService.RefreshToken(tokenRequest);
-            return result.Status switch
-            {
-                200 => Ok(result),
-                400 => BadRequest(result),
-                _ => StatusCode(500, result),
-            };
+            return StatusCode((int)result.Status, result);
         }
-    };
+    }
 }

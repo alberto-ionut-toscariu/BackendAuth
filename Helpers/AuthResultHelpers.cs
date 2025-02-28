@@ -1,40 +1,26 @@
 using BackendAuth.Models;
+using System.Net;
 
 namespace BackendAuth.Helpers
 {
-    public class AuthResultHelper
+    public static class AuthResultHelper
     {
         public static AuthResult CreateSuccessResponse(string message)
-        {
-            return new AuthResult
-            {
-                Success = true,
-                Status = 200,
-                Messages = new List<string> { message }
+            => new(success: true, status: HttpStatusCode.OK, messages: new List<string> { message });
 
-            };
-        }
+        public static AuthResult CreateSuccessResponse(List<string> messages)
+            => new(success: true, status: HttpStatusCode.OK, messages: messages);
+
         public static AuthResult CreateSuccessResponseWithToken(string token, string refreshToken, string message)
-        {
-            return new AuthResult
-            {
-                Success = true,
-                Status = 200,
-                Token = token,
-                RefreshToken = refreshToken,
-                Messages = new List<string> { message }
+            => new(success: true, status: HttpStatusCode.OK, messages: new List<string> { message }, token: token, refreshToken: refreshToken);
 
-            };
-        }
+        public static AuthResult CreateSuccessResponseWithToken(string token, string refreshToken, List<string> messages)
+            => new(success: true, status: HttpStatusCode.OK, messages: messages, token: token, refreshToken: refreshToken);
 
-        public static AuthResult CreateErrorResponse(string errorMessage, int statusCode = 500)
-        {
-            return new AuthResult
-            {
-                Success = false,
-                Messages = new List<string> { errorMessage },
-                Status = statusCode
-            };
-        }
+        public static AuthResult CreateErrorResponse(string errorMessage, HttpStatusCode statusCode = HttpStatusCode.InternalServerError)
+            => new(success: false, status: statusCode, messages: new List<string> { errorMessage });
+
+        public static AuthResult CreateErrorResponse(List<string> errorMessages, HttpStatusCode statusCode = HttpStatusCode.InternalServerError)
+            => new(success: false, status: statusCode, messages: errorMessages);
     }
 }
